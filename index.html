@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeBite NYC - Find Safe Places to Eat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Add favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <a href="index.html" class="flex items-center space-x-2">
+            <span class="text-2xl">🍽️</span>
+            <h1 class="text-xl font-bold tracking-tight text-gray-900">SafeBite NYC</h1>
+          </a>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span id="userEmail" class="hidden text-sm font-medium text-gray-600"></span>
+          <button id="loginButton" onclick="window.location='login.html'" class="btn-primary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium">
+            <i class="fas fa-sign-in-alt mr-2"></i>Login
+          </button>
+          <button id="logoutButton" class="btn-danger inline-flex items-center px-4 py-2 rounded-md text-sm font-medium hidden">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="flex-1 flex flex-col">
+    <section class="relative flex-1 flex items-center justify-center">
+      <!-- Background gradient -->
+      <div class="absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-700"></div>
+      
+      <!-- Content -->
+      <div class="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
+          Find Safe Places to Eat in NYC
+        </h1>
+        
+        <p class="text-lg sm:text-xl text-blue-100 mb-8 max-w-xl mx-auto">
+          Explore NYC restaurants with confidence using our database of health inspection grades and reviews.
+        </p>
+        
+        <a href="explore.html" class="inline-flex items-center justify-center px-6 py-3 bg-white text-indigo-600 font-medium rounded-lg shadow-lg hover:bg-gray-50 transition-all transform hover:-translate-y-1 hover:shadow-xl">
+          <i class="fas fa-search mr-2"></i>
+          Explore Restaurants
+        </a>
+      </div>
+      
+      <!-- Decorative elements -->
+      <div class="absolute bottom-0 left-0 right-0 h-16 bg-gray-50 clip-path-slant"></div>
+      
+      <!-- Food emojis - minimal -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div class="food-emoji blur-sm opacity-20" style="top: 15%; left: 15%;">🍕</div>
+        <div class="food-emoji blur-sm opacity-20" style="top: 70%; left: 80%;">🍔</div>
+        <div class="food-emoji blur-sm opacity-20" style="top: 80%; left: 30%;">🍣</div>
+        <div class="food-emoji blur-sm opacity-20" style="top: 25%; left: 75%;">🍜</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white py-4 border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center">
+        <div class="flex items-center mb-4 sm:mb-0">
+          <span class="text-lg mr-1">🍽️</span>
+          <span class="font-medium text-sm text-gray-700">SafeBite NYC</span>
+        </div>
+        <div class="text-xs text-gray-500">
+          Using data from NYC Open Data - Restaurant Inspection Results
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <style>
+    .clip-path-slant {
+      clip-path: polygon(0 0, 100% 100%, 100% 100%, 0 100%);
+    }
+    
+    @keyframes floatAnimation {
+      0% { transform: translate(0, 0) rotate(0deg); opacity: 0.2; }
+      50% { transform: translate(5px, -5px) rotate(2deg); opacity: 0.3; }
+      100% { transform: translate(0, 0) rotate(0deg); opacity: 0.2; }
+    }
+    
+    .food-emoji {
+      position: absolute;
+      font-size: 6rem;
+      opacity: 0.2;
+      animation: floatAnimation 8s infinite ease-in-out;
+    }
+    
+    .food-emoji:nth-child(2n) {
+      animation-duration: 9s;
+      animation-delay: 1s;
+    }
+    
+    .food-emoji:nth-child(3n) {
+      animation-duration: 10s;
+      animation-delay: 2s;
+    }
+  </style>
+
+  <script>
+    // Initialize Supabase client for auth
+    const SUPABASE_URL = 'https://ierqbfleikjernllbpvj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllcnFiZmxlaWtqZXJubGxicHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4Mzk1MDIsImV4cCI6MjA2MjQxNTUwMn0.YL-JeNy_rKXw_hAlVHkJxnoIutNDSmF9xNcz8RZwr8s';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Check user login status
+    async function loadUser() {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (user) {
+        // User is logged in
+        document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('userEmail').classList.remove('hidden');
+        document.getElementById('loginButton').classList.add('hidden');
+        document.getElementById('logoutButton').classList.remove('hidden');
+      } else {
+        // User is not logged in
+        document.getElementById('userEmail').classList.add('hidden');
+        document.getElementById('loginButton').classList.remove('hidden');
+        document.getElementById('logoutButton').classList.add('hidden');
+      }
+    }
+    
+    // Handle logout
+    async function logout() {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Error signing out:', error);
+      } else {
+        window.location.href = 'login.html';
+      }
+    }
+    
+    // Attach event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      loadUser();
+      
+      // Logout button
+      document.getElementById('logoutButton').addEventListener('click', logout);
+    });
+  </script>
+</body>
+</html>

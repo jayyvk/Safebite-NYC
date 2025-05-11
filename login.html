@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeBite NYC - Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Add favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <a href="index.html" class="flex items-center space-x-2">
+            <span class="text-2xl">🍽️</span>
+            <h1 class="text-xl font-bold tracking-tight text-gray-900">SafeBite NYC</h1>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Login/Signup Form -->
+  <main class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+    <div class="card max-w-md w-full p-8">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900" id="authTitle">Sign In</h2>
+        <p class="mt-2 text-sm text-gray-600" id="authDescription">
+          Sign in to your account to access all features
+        </p>
+      </div>
+
+      <div id="authMessage" class="mb-6 hidden"></div>
+
+      <form id="authForm" class="space-y-6">
+        <div>
+          <label for="email" class="form-label">Email address</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fas fa-envelope text-gray-400"></i>
+            </div>
+            <input id="email" name="email" type="email" required 
+                  class="form-input pl-10" placeholder="your.email@example.com">
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="form-label">Password</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="fas fa-lock text-gray-400"></i>
+            </div>
+            <input id="password" name="password" type="password" required 
+                  class="form-input pl-10" placeholder="••••••••">
+          </div>
+          <p class="mt-1 text-xs text-gray-500" id="passwordHelp">
+            Must be at least 6 characters
+          </p>
+        </div>
+
+        <div>
+          <button type="submit" class="form-submit relative">
+            <span id="buttonText">Sign In</span>
+            <span id="loadingSpinner" class="hidden absolute inset-0 flex items-center justify-center">
+              <i class="fas fa-spinner fa-spin"></i>
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-6 text-center">
+        <button id="toggleAuth" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+          Need an account? Sign up
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Initialize Supabase client
+    const SUPABASE_URL = 'https://ierqbfleikjernllbpvj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllcnFiZmxlaWtqZXJubGxicHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4Mzk1MDIsImV4cCI6MjA2MjQxNTUwMn0.YL-JeNy_rKXw_hAlVHkJxnoIutNDSmF9xNcz8RZwr8s';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let isSignUp = false;
+    
+    // Check if user is already logged in
+    async function checkSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        window.location.href = 'explore.html';
+      }
+    }
+    
+    // Show authentication message
+    function showMessage(message, type = 'error') {
+      const messageEl = document.getElementById('authMessage');
+      messageEl.textContent = message;
+      messageEl.className = `mb-6 p-3 rounded-md ${type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`;
+      messageEl.classList.remove('hidden');
+    }
+    
+    // Toggle between sign in and sign up
+    function toggleAuthMode() {
+      isSignUp = !isSignUp;
+      
+      // Update UI text
+      document.getElementById('authTitle').textContent = isSignUp ? 'Create Account' : 'Sign In';
+      document.getElementById('authDescription').textContent = isSignUp 
+        ? 'Create a new account to access all features'
+        : 'Sign in to your account to access all features';
+      document.getElementById('buttonText').textContent = isSignUp ? 'Sign Up' : 'Sign In';
+      document.getElementById('toggleAuth').textContent = isSignUp 
+        ? 'Already have an account? Sign in' 
+        : 'Need an account? Sign up';
+      
+      // Reset form and hide messages
+      document.getElementById('authForm').reset();
+      document.getElementById('authMessage').classList.add('hidden');
+    }
+    
+    // Set loading state
+    function setLoading(isLoading) {
+      const buttonText = document.getElementById('buttonText');
+      const loadingSpinner = document.getElementById('loadingSpinner');
+      const submitButton = document.querySelector('button[type="submit"]');
+      
+      if (isLoading) {
+        buttonText.classList.add('opacity-0');
+        loadingSpinner.classList.remove('hidden');
+        submitButton.disabled = true;
+      } else {
+        buttonText.classList.remove('opacity-0');
+        loadingSpinner.classList.add('hidden');
+        submitButton.disabled = false;
+      }
+    }
+    
+    // Handle form submission
+    async function handleSubmit(e) {
+      e.preventDefault();
+      
+      // Get form values
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      // Validate
+      if (!email || !password) {
+        showMessage('Please enter both email and password');
+        return;
+      }
+      
+      if (password.length < 6) {
+        showMessage('Password must be at least 6 characters');
+        return;
+      }
+      
+      // Set loading state
+      setLoading(true);
+      
+      try {
+        let result;
+        
+        if (isSignUp) {
+          // Sign up
+          result = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/explore.html`
+            }
+          });
+          
+          if (result.error) throw result.error;
+          
+          showMessage('Account created! Please check your email for a confirmation link.', 'success');
+        } else {
+          // Sign in
+          result = await supabase.auth.signInWithPassword({ email, password });
+          
+          if (result.error) throw result.error;
+          
+          // Redirect to explore page on successful login
+          window.location.href = 'explore.html';
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        showMessage(error.message || 'Authentication failed. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    // Set up event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check if already logged in
+      checkSession();
+      
+      // Handle form submission
+      document.getElementById('authForm').addEventListener('submit', handleSubmit);
+      
+      // Toggle between sign in and sign up
+      document.getElementById('toggleAuth').addEventListener('click', toggleAuthMode);
+    });
+  </script>
+</body>
+</html>

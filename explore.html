@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SafeBite NYC - Explore</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Add favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <a href="index.html" class="flex items-center space-x-2">
+            <span class="text-2xl">🍽️</span>
+            <h1 class="text-xl font-bold tracking-tight text-gray-900">SafeBite NYC</h1>
+          </a>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span id="userEmail" class="hidden text-sm font-medium text-gray-600"></span>
+          <button id="loginButton" onclick="window.location='login.html'" class="btn-primary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium">
+            <i class="fas fa-sign-in-alt mr-2"></i>Login
+          </button>
+          <button id="logoutButton" class="btn-danger inline-flex items-center px-4 py-2 rounded-md text-sm font-medium hidden">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Search and Filters -->
+  <div class="filter-container bg-white shadow-sm sticky top-16 z-40 border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:space-x-4">
+        <div class="flex-1 relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-gray-400"></i>
+          </div>
+          <input id="searchInput" type="text" placeholder="Search restaurants by name or ZIP" 
+                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors" />
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <select id="gradeFilter" class="block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors">
+            <option value="">All Grades</option>
+            <option value="A">🏆 Grade A</option>
+            <option value="B">👍 Grade B</option>
+            <option value="C">⚠️ Grade C</option>
+            <option value="N/A">❓ Grade N/A</option>
+          </select>
+          <select id="boroughFilter" class="block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors">
+            <option value="">All Boroughs</option>
+            <option value="Manhattan">🗽 Manhattan</option>
+            <option value="Brooklyn">🌉 Brooklyn</option>
+            <option value="Queens">👑 Queens</option>
+            <option value="Bronx">🏙️ Bronx</option>
+            <option value="Staten Island">🏝️ Staten Island</option>
+          </select>
+          <select id="cuisineFilter" class="block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors">
+            <option value="">All Cuisines</option>
+            <option value="American">🍔 American</option>
+            <option value="Chinese">🥡 Chinese</option>
+            <option value="Italian">🍝 Italian</option>
+            <option value="Japanese">🍣 Japanese</option>
+            <option value="Indian">🍛 Indian</option>
+            <option value="Korean">🍲 Korean</option>
+            <option value="Thai">🍜 Thai</option>
+            <option value="Mexican">🌮 Mexican</option>
+            <option value="Greek">🥙 Greek</option>
+            <option value="French">🥖 French</option>
+            <option value="Middle Eastern">🧆 Middle Eastern</option>
+            <option value="Caribbean">🌴 Caribbean</option>
+            <option value="Vietnamese">🍜 Vietnamese</option>
+            <option value="Bakery Products/Desserts">🍰 Bakery/Desserts</option>
+            <option value="Sandwiches">🥪 Sandwiches</option>
+            <option value="Pizza">🍕 Pizza</option>
+            <option value="Seafood">🦞 Seafood</option>
+            <option value="Vegetarian">🥗 Vegetarian</option>
+            <option value="Vegan">🥬 Vegan</option>
+          </select>
+          <button id="applyFilters" class="btn-primary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium">
+            <i class="fas fa-filter mr-2"></i>Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Restaurant Cards -->
+  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div id="restaurantGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Cards will be dynamically inserted here -->
+    </div>
+  </main>
+
+  <!-- Details Modal -->
+  <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white w-full max-w-2xl mx-4 rounded-xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeDetailsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+      
+      <div class="p-6">
+        <div class="restaurant-header">
+          <div>
+            <h2 id="modalRestaurantTitle" class="restaurant-title">Restaurant Name</h2>
+            <p id="modalRestaurantAddress" class="restaurant-address"></p>
+            <p id="modalRestaurantDetails" class="restaurant-details"></p>
+          </div>
+        </div>
+
+        <div id="map" class="map-container"></div>
+
+        <div class="border-t border-gray-200 pt-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-comment-alt mr-2 text-blue-500"></i>Reviews
+          </h3>
+          <div id="reviewsList" class="space-y-4 mb-6"></div>
+
+          <div id="reviewFormContainer" class="hidden">
+            <form id="reviewForm" class="review-form">
+              <input type="hidden" id="modalRestaurantId" />
+              <input type="hidden" id="reviewId" />
+              <h4 class="review-form-title">
+                <i class="fas fa-pen mr-2 text-blue-500"></i>Write Your Review
+              </h4>
+              <div class="form-group">
+                <label for="reviewerName" class="form-label">Your Name (optional)</label>
+                <input type="text" id="reviewerName" class="form-input" />
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label">Rating</label>
+                <div class="flex items-center space-x-1" id="starRating">
+                  <span class="text-2xl cursor-pointer text-gray-300 hover:text-yellow-400 transition-colors" data-rating="1">★</span>
+                  <span class="text-2xl cursor-pointer text-gray-300 hover:text-yellow-400 transition-colors" data-rating="2">★</span>
+                  <span class="text-2xl cursor-pointer text-gray-300 hover:text-yellow-400 transition-colors" data-rating="3">★</span>
+                  <span class="text-2xl cursor-pointer text-gray-300 hover:text-yellow-400 transition-colors" data-rating="4">★</span>
+                  <span class="text-2xl cursor-pointer text-gray-300 hover:text-yellow-400 transition-colors" data-rating="5">★</span>
+                </div>
+                <input type="hidden" id="rating" value="" />
+              </div>
+
+              <div class="form-group">
+                <label for="comment" class="form-label">Your Review</label>
+                <textarea id="comment" rows="3" placeholder="Share your experience..." 
+                          class="form-input"></textarea>
+              </div>
+
+              <div class="flex space-x-3">
+                <button type="submit" class="form-submit">
+                  <i class="fas fa-paper-plane mr-2"></i><span id="submitButtonText">Submit Review</span>
+                </button>
+                <button type="button" id="cancelEdit" class="hidden inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </form>
+            <div id="reviewSuccess" class="success-message hidden">
+              <i class="fas fa-check-circle"></i>Thanks! Your review was submitted successfully.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

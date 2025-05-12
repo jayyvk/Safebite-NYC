@@ -13,9 +13,20 @@ function setLoading(isLoading) {
   const grid = document.getElementById('restaurantGrid');
   if (isLoading) {
     grid.innerHTML = `
-      <div class="col-span-full flex justify-center items-center py-12">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      ${Array(6).fill().map(() => `
+        <div class="skeleton-card">
+          <div class="flex justify-between items-start mb-4">
+            <div class="skeleton-line title mb-2"></div>
+            <div class="skeleton-line short" style="width: 60px; height: 24px; border-radius: 9999px;"></div>
+          </div>
+          <div class="space-y-2 mb-4">
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+          </div>
+          <div class="skeleton-line" style="height: 38px; margin-top: 16px;"></div>
+        </div>
+      `).join('')}
     `;
   }
 }
@@ -99,12 +110,17 @@ function renderRestaurants(restaurants) {
   const grid = document.getElementById('restaurantGrid');
   grid.innerHTML = '';
   
-  if (restaurants.length === 0) {
+  if (!restaurants || restaurants.length === 0) {
     grid.innerHTML = `
       <div class="col-span-full empty-state">
-        <i class="fas fa-search"></i>
-        <h3 class="text-xl font-medium mb-2">No restaurants found</h3>
-        <p>Try adjusting your filters or search terms</p>
+        <div class="empty-state-icon">
+          <i class="fas fa-utensils"></i>
+        </div>
+        <h3 class="text-xl font-semibold mb-2">No restaurants found</h3>
+        <p class="text-gray-500 mb-4">Try adjusting your filters or search terms</p>
+        <button onclick="clearFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors">
+          <i class="fas fa-sync-alt mr-2"></i>Clear Filters
+        </button>
       </div>
     `;
     return;
@@ -170,13 +186,17 @@ function renderRestaurants(restaurants) {
           </span>
         </div>
         <div class="mb-3 text-sm text-gray-600">
-          <div class="flex items-start mb-1">
+          <div class="flex items-start mb-2">
             <span class="card-icon flex-shrink-0 mt-1"><i class="fas fa-map-marker-alt"></i></span>
-            <span class="line-clamp-1">${restaurant.address}</span>
+            <span class="line-clamp-1">${restaurant.address || 'No address available'}</span>
           </div>
-          <div class="flex items-center mb-1">
+          <div class="flex items-center mb-2">
             <span class="card-icon flex-shrink-0"><i class="fas fa-utensils"></i></span>
             <span>${cuisineEmoji} ${cuisine}</span>
+          </div>
+          <div class="flex items-center mb-2">
+            <span class="card-icon flex-shrink-0"><i class="fas fa-map-marked-alt"></i></span>
+            <span>${restaurant.borough || 'NYC'}</span>
           </div>
           <div class="flex items-center">
             <span class="card-icon flex-shrink-0"><i class="fas fa-calendar-alt"></i></span>
@@ -185,7 +205,7 @@ function renderRestaurants(restaurants) {
         </div>
         <button 
           onclick="handleViewDetails(${restaurant.id})" 
-          class="btn-primary w-full flex justify-center items-center space-x-1 mt-4 py-2"
+          class="btn-primary w-full flex justify-center items-center mt-4 py-2"
         >
           <i class="fas fa-info-circle mr-2"></i>
           <span>View Details</span>
@@ -272,7 +292,7 @@ async function loadRestaurantDetails(restaurant) {
   const restaurantIdInput = document.getElementById('modalRestaurantId');
   
   title.textContent = restaurant.name;
-  address.innerHTML = `<i class="fas fa-map-marker-alt text-gray-400 mr-2"></i>${restaurant.address}`;
+  address.innerHTML = `<i class="fas fa-map-marker-alt text-gray-400 mr-2"></i>${restaurant.address || 'No address available'}`;
   
   // Format details with icons
   const grade = restaurant.grade || 'N/A';
@@ -283,22 +303,24 @@ async function loadRestaurantDetails(restaurant) {
   const cuisine = restaurant.cuisine || restaurant.cuisine_type || 'Other';
   
   details.innerHTML = `
-    <div class="flex flex-wrap gap-2 mt-2">
+    <div class="flex flex-wrap gap-2 mt-3">
       <span class="grade-badge ${gradeClass}">
         <span class="grade-emoji">${gradeEmoji}</span>${grade}
       </span>
-      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        <i class="fas fa-utensils text-gray-400 mr-1"></i>
-        ${cuisine}
+      <span class="tag">
+        <i class="fas fa-utensils"></i>${cuisine}
       </span>
-      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        <i class="fas fa-map-marked text-gray-400 mr-1"></i>
-        ${restaurant.borough || 'Unknown'}
+      <span class="tag">
+        <i class="fas fa-map-marked-alt"></i>${restaurant.borough || 'NYC'}
       </span>
-      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        <i class="fas fa-calendar text-gray-400 mr-1"></i>
-        ${formatDate(restaurant.inspection_date)}
+      <span class="tag">
+        <i class="fas fa-calendar-alt"></i>${formatDate(restaurant.inspection_date)}
       </span>
+      ${restaurant.critical_flag ? `
+        <span class="tag" style="background-color: var(--danger-light); color: var(--danger); border-color: var(--danger-light);">
+          <i class="fas fa-exclamation-triangle"></i>Critical Violation
+        </span>
+      ` : ''}
     </div>
   `;
   
@@ -828,6 +850,18 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   
   initializeStarRating();
+  
+  // Add scroll effect to filter container
+  const filterContainer = document.querySelector('.filter-container');
+  if (filterContainer) {
+    window.addEventListener('scroll', function() {
+      if (window.scrollY > 10) {
+        filterContainer.classList.add('scrolled');
+      } else {
+        filterContainer.classList.remove('scrolled');
+      }
+    });
+  }
 });
 
 // Make functions globally accessible

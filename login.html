@@ -147,7 +147,7 @@
     // Handle form submission
     async function handleSubmit(e) {
       e.preventDefault();
-      
+
       // Get form values
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
@@ -165,7 +165,7 @@
       
       // Set loading state
       setLoading(true);
-      
+
       try {
         let result;
         
@@ -187,7 +187,7 @@
           result = await supabase.auth.signInWithPassword({ email, password });
           
           if (result.error) throw result.error;
-          
+
           // Redirect to explore page on successful login
           window.location.href = 'explore.html';
         }

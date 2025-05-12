@@ -163,84 +163,6 @@ header h1 {
   box-shadow: var(--card-shadow-hover);
 }
 
-/* Restaurant card image */
-.card-image {
-  height: 160px;
-  overflow: hidden;
-  position: relative;
-  background-color: var(--gray-200);
-}
-
-.card-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform var(--transition-normal);
-}
-
-.card:hover .card-image img {
-  transform: scale(1.05);
-}
-
-.card-content {
-  padding: 1rem;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;  
-  overflow: hidden;
-  flex: 1;
-}
-
-.card-details {
-  margin-bottom: 1rem;
-}
-
-.card-detail-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
-}
-
-.card-icon {
-  min-width: 1.25rem;
-  color: var(--gray-500);
-  text-align: center;
-  margin-right: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--gray-700);
-}
-
-.card-footer {
-  margin-top: auto;
-  padding-top: 0.75rem;
-}
-
 /* Restaurant grid styling */
 #restaurantGrid {
   display: grid;
@@ -335,39 +257,6 @@ header h1 {
   margin-bottom: 1.5rem;
 }
 
-/* Enhanced modal styling */
-.restaurant-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-}
-
-.restaurant-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: 0.5rem;
-}
-
-.restaurant-address {
-  color: var(--gray-600);
-  margin-bottom: 0.25rem;
-}
-
-.restaurant-details {
-  color: var(--gray-700);
-  font-size: 0.875rem;
-}
-
-.modal-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-}
-
 /* Reviews styling */
 .review-card {
   background-color: white;
@@ -451,6 +340,64 @@ header h1 {
   box-shadow: var(--card-shadow);
   height: 300px;
   margin-bottom: 1.5rem;
+}
+
+/* Emoji in grade badges */
+.grade-emoji {
+  margin-right: 0.5rem;
+  font-size: 1.1em;
+}
+
+/* Restaurant card icons */
+.card-icon {
+  width: 1.25rem;
+  color: var(--gray-400);
+  text-align: center;
+  margin-right: 0.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* Line clamp utilities for text truncation */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Improved restaurant detail modal */
+.restaurant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.restaurant-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 0.5rem;
+}
+
+.restaurant-address {
+  color: var(--gray-600);
+  margin-bottom: 0.25rem;
+}
+
+.restaurant-details {
+  color: var(--gray-700);
+  font-size: 0.875rem;
 }
 
 /* Review form styling */
@@ -572,22 +519,4 @@ th {
 
 .success-message i {
   margin-right: 0.5rem;
-}
-
-/* Fallback image styling */
-.fallback-image {
-  opacity: 0.8;
-  filter: grayscale(20%);
-}
-
-.fallback-image::after {
-  content: "Generic Image";
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: white;
-  font-size: 0.7rem;
-  padding: 2px 5px;
-  border-top-left-radius: 4px;
 }

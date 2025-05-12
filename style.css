@@ -731,3 +731,101 @@ th {
   margin-right: 0.25rem;
   color: var(--gray-500);
 }
+
+/* Landing page specific styles */
+.hero-section {
+  min-height: 80vh;
+}
+
+.clip-path-wave {
+  clip-path: polygon(0 60%, 100% 100%, 100% 100%, 0 100%);
+}
+
+/* Features styling */
+.feature-card {
+  padding: 2rem;
+  border-radius: 1rem;
+  background-color: var(--gray-50);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+.feature-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+/* Updated food emoji animation */
+@keyframes floatAnimation {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0.15; }
+  50% { transform: translate(5px, -5px) rotate(2deg); opacity: 0.2; }
+  100% { transform: translate(0, 0) rotate(0deg); opacity: 0.15; }
+}
+
+.food-emoji {
+  position: absolute;
+  font-size: 6rem;
+  opacity: 0.15;
+  animation: floatAnimation 12s infinite ease-in-out;
+}
+
+/* Fade in animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  opacity: 0;
+  animation: fadeIn 0.8s ease forwards;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animation-delay-600 {
+  animation-delay: 0.6s;
+}
+
+/* Ripple animation for buttons */
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  20% {
+    transform: scale(25, 25);
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(40, 40);
+  }
+}
+
+/* Logo animation */
+.logo-rotate {
+  transition: transform 0.3s ease;
+}
+
+.logo-rotate:hover {
+  transform: rotate(12deg);
+}

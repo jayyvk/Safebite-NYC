@@ -6,7 +6,7 @@
   <title>SafeBite NYC - Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <!-- Add favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
@@ -15,12 +15,12 @@
 <body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
 
   <!-- Header -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+  <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center">
-          <a href="index.html" class="flex items-center space-x-2">
-            <span class="text-2xl">🍽️</span>
+          <a href="index.html" class="flex items-center space-x-2 group">
+            <span class="text-2xl logo-rotate">🍽️</span>
             <h1 class="text-xl font-bold tracking-tight text-gray-900">SafeBite NYC</h1>
           </a>
         </div>
@@ -30,7 +30,7 @@
 
   <!-- Login/Signup Form -->
   <main class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
-    <div class="card max-w-md w-full p-8">
+    <div class="card max-w-md w-full p-8 animate-fade-in">
       <div class="text-center mb-8">
         <h2 class="text-2xl font-bold text-gray-900" id="authTitle">Sign In</h2>
         <p class="mt-2 text-sm text-gray-600" id="authDescription">
@@ -83,6 +83,22 @@
       </div>
     </div>
   </main>
+
+  <!-- Footer -->
+  <footer class="bg-white py-6 border-t border-gray-100 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center">
+        <div class="flex items-center mb-4 sm:mb-0">
+          <span class="text-lg mr-2 logo-rotate">🍽️</span>
+          <span class="font-medium text-sm text-gray-700">SafeBite NYC</span>
+        </div>
+        <div class="text-sm text-gray-500 flex items-center">
+          <i class="fas fa-shield-alt mr-2 text-indigo-400"></i>
+          Safe &amp; secure authentication
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <script>
     // Initialize Supabase client
@@ -199,16 +215,11 @@
       }
     }
     
-    // Set up event listeners
+    // Attach event listeners
     document.addEventListener('DOMContentLoaded', () => {
-      // Check if already logged in
       checkSession();
-      
-      // Handle form submission
-      document.getElementById('authForm').addEventListener('submit', handleSubmit);
-      
-      // Toggle between sign in and sign up
       document.getElementById('toggleAuth').addEventListener('click', toggleAuthMode);
+      document.getElementById('authForm').addEventListener('submit', handleSubmit);
     });
   </script>
 </body>

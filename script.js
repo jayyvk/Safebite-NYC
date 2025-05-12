@@ -7,6 +7,8 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let mapInstance = null;
 let currentFilters = {};
+// Google Places API key - you need to replace this with your actual API key
+const GOOGLE_PLACES_API_KEY = 'AIzaSyAHsCSyXkLpZtwYBivWJ_Dja9H5vARtOF4'; 
 
 // Add loading state
 function setLoading(isLoading) {
@@ -85,13 +87,120 @@ async function fetchRestaurants(filters = {}) {
       showNotification('Error loading restaurants', 'error');
       return;
     }
-    
-    renderRestaurants(data);
+
+    // Enrich data with restaurant photos from Google Places API
+    const enhancedData = await enrichRestaurantsWithGooglePhotos(data);
+    renderRestaurants(enhancedData);
   } catch (err) {
     console.error('Error fetching restaurants:', err);
     showNotification('An error occurred while fetching restaurants', 'error');
   } finally {
     setLoading(false);
+  }
+}
+
+// Function to fetch restaurant images from Google Places API
+async function enrichRestaurantsWithGooglePhotos(restaurants) {
+  const enhancedRestaurants = [];
+  
+  // Process restaurants in batches to avoid too many concurrent requests
+  const batchSize = 5;
+  for (let i = 0; i < restaurants.length; i += batchSize) {
+    const batch = restaurants.slice(i, i + batchSize);
+    const promises = batch.map(restaurant => fetchGooglePlacePhoto(restaurant));
+    const results = await Promise.all(promises);
+    enhancedRestaurants.push(...results);
+  }
+  
+  return enhancedRestaurants;
+}
+
+// Function to fetch a restaurant photo from Google Places API
+async function fetchGooglePlacePhoto(restaurant) {
+  try {
+    // First, search for the place to get its place_id and photo references
+    const searchQuery = `${restaurant.name} ${restaurant.address}`;
+    const placeData = await findPlaceWithTextSearch(searchQuery);
+    
+    if (placeData && placeData.photo_url) {
+      // Add the photo URL to the restaurant object
+      return { ...restaurant, google_photo_url: placeData.photo_url };
+    }
+    
+    // If no result was found, return the original restaurant
+    return restaurant;
+  } catch (error) {
+    console.error(`Error fetching Google photo for ${restaurant.name}:`, error);
+    return restaurant;
+  }
+}
+
+// Function to search for a place using Google Places API Text Search
+async function findPlaceWithTextSearch(searchQuery) {
+  try {
+    // Using our local PHP proxy instead of cors-anywhere
+    const proxyUrl = 'proxy.php?url=';
+    const apiUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+    
+    // We don't need to include the API key in the URL as our PHP proxy will add it
+    const response = await fetch(`${proxyUrl}${encodeURIComponent(apiUrl)}?query=${encodeURIComponent(searchQuery)}`);
+    
+    if (!response.ok) {
+      throw new Error(`Google Places API response error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const place = data.results[0];
+      
+      // Check if the place has photos
+      if (place.photos && place.photos.length > 0) {
+        const photoReference = place.photos[0].photo_reference;
+        // Construct the photo URL - we'll directly reference the Google API for photos
+        // as they are image responses, not JSON
+        const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
+        
+        return {
+          place_id: place.place_id,
+          photo_url: photoUrl,
+          name: place.name,
+          vicinity: place.vicinity || place.formatted_address
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error in findPlaceWithTextSearch:', error);
+    return null;
+  }
+}
+
+// Backup method to get a place photo using place ID
+async function getPlacePhotoByPlaceId(placeId) {
+  try {
+    // Using our local PHP proxy
+    const proxyUrl = 'proxy.php?url=';
+    const apiUrl = 'https://maps.googleapis.com/maps/api/place/details/json';
+    
+    const response = await fetch(`${proxyUrl}${encodeURIComponent(apiUrl)}?place_id=${placeId}&fields=photos`);
+    
+    if (!response.ok) {
+      throw new Error(`Google Places API response error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.result && data.result.photos && data.result.photos.length > 0) {
+      const photoReference = data.result.photos[0].photo_reference;
+      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error in getPlacePhotoByPlaceId:', error);
+    return null;
   }
 }
 
@@ -160,7 +269,7 @@ function renderRestaurants(restaurants) {
     'N/A': '❓',
     'PENDING': '⏳'
   };
-
+  
   restaurants.forEach(restaurant => {
     // Check for cuisine property with fallback options
     const cuisine = restaurant.cuisine || restaurant.cuisine_type || 'Other';
@@ -168,37 +277,46 @@ function renderRestaurants(restaurants) {
     const gradeClass = `grade-${restaurant.grade || 'NA'}`;
     const gradeEmoji = gradeEmojis[restaurant.grade] || '❓';
     
+    // Get the restaurant image - either from Google Places API or a fallback based on cuisine
+    const imageUrl = restaurant.google_photo_url || getRestaurantImageUrl(restaurant);
+    
     const card = document.createElement('div');
-    card.className = 'card hover:shadow-lg transition-all';
+    card.className = 'card';
     card.innerHTML = `
-      <div class="p-4">
-        <div class="flex justify-between items-start mb-3">
-          <h3 class="text-lg font-semibold text-gray-900 line-clamp-2">${restaurant.name}</h3>
+      <div class="card-image">
+        <img src="${imageUrl}" alt="${restaurant.name}" loading="lazy" 
+             onerror="handleImageError(this, '${restaurant.name.replace(/'/g, "\\'")}')" />
+      </div>
+      <div class="card-content">
+        <div class="card-header">
+          <h3 class="card-title">${restaurant.name}</h3>
           <span class="grade-badge ${gradeClass}">
-            <span class="grade-emoji">${gradeEmoji}</span>${restaurant.grade || 'N/A'}
+            ${restaurant.grade || 'N/A'}
           </span>
         </div>
-        <div class="mb-3 text-sm text-gray-600">
-          <div class="flex items-center mb-1">
+        <div class="card-details">
+          <div class="card-detail-item">
             <span class="card-icon"><i class="fas fa-map-marker-alt"></i></span>
-            <span class="line-clamp-1">${restaurant.address}</span>
+            <span class="card-text">${restaurant.address}</span>
           </div>
-          <div class="flex items-center mb-1">
+          <div class="card-detail-item">
             <span class="card-icon"><i class="fas fa-utensils"></i></span>
-            <span>${cuisineEmoji} ${cuisine}</span>
+            <span class="card-text">${cuisineEmoji} ${cuisine}</span>
           </div>
-          <div class="flex items-center">
+          <div class="card-detail-item">
             <span class="card-icon"><i class="fas fa-calendar-alt"></i></span>
-            <span>Last Inspection: ${formatDate(restaurant.inspection_date)}</span>
+            <span class="card-text">Last Inspection: ${formatDate(restaurant.inspection_date)}</span>
           </div>
         </div>
-        <button 
-          onclick="handleViewDetails(${restaurant.id})" 
-          class="btn-primary w-full flex justify-center items-center space-x-1 mt-4 py-2"
-        >
-          <i class="fas fa-info-circle mr-2"></i>
-          <span>View Details</span>
-        </button>
+        <div class="card-footer">
+          <button 
+            onclick="handleViewDetails(${restaurant.id})" 
+            class="btn-primary w-full flex justify-center items-center"
+          >
+            <i class="fas fa-info-circle mr-2"></i>
+            <span>View Details</span>
+          </button>
+        </div>
       </div>
     `;
     grid.appendChild(card);
@@ -261,7 +379,7 @@ async function handleViewDetails(restaurantId) {
     }
 
     // Set restaurant details in the modal
-    loadRestaurantDetails(restaurant);
+    await loadRestaurantDetails(restaurant);
 
     // Check if user is logged in to show/hide review form
     const { data: { user } } = await supabase.auth.getUser();
@@ -275,61 +393,192 @@ async function handleViewDetails(restaurantId) {
 
 // Load restaurant details into modal
 async function loadRestaurantDetails(restaurant) {
-  const title = document.getElementById('modalRestaurantTitle');
-  const address = document.getElementById('modalRestaurantAddress');
-  const details = document.getElementById('modalRestaurantDetails');
-  const restaurantIdInput = document.getElementById('modalRestaurantId');
+  // Clear previous details
+  clearRestaurantDetails();
   
-  title.textContent = restaurant.name;
-  address.innerHTML = `<i class="fas fa-map-marker-alt text-gray-400 mr-2"></i>${restaurant.address}`;
+  // Get the restaurant image - either from Google Places API or a fallback based on cuisine
+  let imageUrl = restaurant.google_photo_url;
   
-  // Format details with icons
-  const grade = restaurant.grade || 'N/A';
-  const gradeClass = `grade-${grade}`;
-  const gradeEmoji = {'A': '🏆', 'B': '👍', 'C': '⚠️', 'N/A': '❓', 'PENDING': '⏳'}[grade] || '❓';
+  // If we don't have a Google photo URL already, try to fetch one
+  if (!imageUrl) {
+    const searchQuery = `${restaurant.name} ${restaurant.address}`;
+    const placeData = await findPlaceWithTextSearch(searchQuery);
+    
+    if (placeData && placeData.photo_url) {
+      imageUrl = placeData.photo_url;
+    } else {
+      // Use the cuisine-based image as fallback
+      imageUrl = getRestaurantImageUrl(restaurant);
+    }
+  }
   
-  // Use cuisine with fallback options
-  const cuisine = restaurant.cuisine || restaurant.cuisine_type || 'Other';
+  // Set restaurant details
+  document.getElementById('modalRestaurantTitle').textContent = restaurant.name;
+  document.getElementById('modalRestaurantAddress').textContent = restaurant.address;
   
-  details.innerHTML = `
-    <div class="flex flex-wrap gap-2 mt-2">
-      <span class="grade-badge ${gradeClass}">
-        <span class="grade-emoji">${gradeEmoji}</span>${grade}
-      </span>
-      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        <i class="fas fa-utensils text-gray-400 mr-1"></i>
-        ${cuisine}
-      </span>
-      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        <i class="fas fa-map-marked text-gray-400 mr-1"></i>
-        ${restaurant.borough || 'Unknown'}
-      </span>
-      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-        <i class="fas fa-calendar text-gray-400 mr-1"></i>
-        ${formatDate(restaurant.inspection_date)}
-      </span>
+  // Add restaurant image to modal
+  const modalHeader = document.querySelector('.restaurant-header');
+  const imageContainer = document.createElement('div');
+  imageContainer.innerHTML = `<img src="${imageUrl}" alt="${restaurant.name}" class="modal-image" onerror="handleImageError(this, '${restaurant.name.replace(/'/g, "\\'")}')" />`;
+  modalHeader.insertAdjacentElement('beforebegin', imageContainer);
+  
+  // Determine the cuisine with fallback
+  const cuisine = restaurant.cuisine || restaurant.cuisine_type || 'Unknown';
+  const cuisineEmoji = getCuisineEmoji(cuisine);
+  
+  // Format the inspection date
+  const inspectionDate = formatDate(restaurant.inspection_date);
+  
+  // Handle the grade display
+  const gradeDisplay = restaurant.grade ? 
+    `<span class="grade-badge grade-${restaurant.grade}">${restaurant.grade}</span>` : 
+    '<span class="grade-badge grade-NA">N/A</span>';
+  
+  // Set other restaurant details
+  document.getElementById('modalRestaurantDetails').innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+      <div>
+        <p><i class="fas fa-utensils text-gray-500 mr-2"></i> <strong>Cuisine:</strong> ${cuisineEmoji} ${cuisine}</p>
+        <p><i class="fas fa-calendar-check text-gray-500 mr-2"></i> <strong>Last Inspection:</strong> ${inspectionDate}</p>
+      </div>
+      <div>
+        <p><i class="fas fa-clipboard-check text-gray-500 mr-2"></i> <strong>Grade:</strong> ${gradeDisplay}</p>
+        <p><i class="fas fa-map-marker-alt text-gray-500 mr-2"></i> <strong>Borough:</strong> ${restaurant.borough || 'Unknown'}</p>
+      </div>
     </div>
   `;
   
-  restaurantIdInput.value = restaurant.id;
-  
   // Load map
   loadMap(restaurant);
+  
+  // Load reviews
+  await loadReviews(restaurant.id);
+  
+  // Show the modal
+  document.getElementById('detailsModal').classList.remove('hidden');
+  
+  // Store restaurant ID for reviews
+  document.getElementById('modalRestaurantId').value = restaurant.id;
+  
+  // Update login status and review form visibility
+  updateReviewFormVisibility();
+}
 
-  // Load reviews for this restaurant
-  loadReviews(restaurant.id);
+// Helper function to get cuisine emoji (for modal)
+function getCuisineEmoji(cuisine) {
+  const cuisineEmojis = {
+    'American': '🍔',
+    'Chinese': '🥡',
+    'Italian': '🍝',
+    'Japanese': '🍣',
+    'Indian': '🍛',
+    'Korean': '🍲',
+    'Thai': '🍜',
+    'Mexican': '🌮',
+    'Greek': '🥙',
+    'French': '🥖',
+    'Middle Eastern': '🧆',
+    'Caribbean': '🌴',
+    'Vietnamese': '🍜',
+    'Bakery Products/Desserts': '🍰',
+    'Sandwiches': '🥪',
+    'Pizza': '🍕',
+    'Seafood': '🦞',
+    'Vegetarian': '🥗',
+    'Vegan': '🥬',
+    'Latin': '🌯',
+    'Latin American': '🌯',
+    'Mediterranean': '🫒',
+    'Bakery': '🥐',
+    'Café/Coffee/Tea': '☕',
+    'Coffee/Tea': '☕',
+    'Soul Food': '🍗',
+    'Delicatessen': '🥓',
+    'African': '🍲',
+    'Spanish': '🥘',
+    'Peruvian': '🌽',
+    'Hamburgers': '🍔',
+    'Jewish/Kosher': '✡️'
+  };
+  
+  return cuisineEmojis[cuisine] || '🍴';
+}
+
+// Function to handle image loading errors
+function handleImageError(img, restaurantName) {
+  // Set a default backup image
+  img.src = 'https://images.unsplash.com/photo-1532635241-17e820acc59f?q=80&w=800';
+  
+  // Add a small notice class
+  img.classList.add('fallback-image');
+  
+  // Log for debugging
+  console.log(`Image failed to load for: ${restaurantName}`);
+}
+
+// Function to get a placeholder image URL based on restaurant cuisine type
+function getRestaurantImageUrl(restaurant) {
+  const cuisine = restaurant.cuisine || restaurant.cuisine_type || 'Other';
+  
+  // Map cuisines to appropriate food images
+  const cuisineImageMap = {
+    'American': 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=800',
+    'Chinese': 'https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=800',
+    'Italian': 'https://images.unsplash.com/photo-1595295333158-4742f28fbd85?q=80&w=800',
+    'Japanese': 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?q=80&w=800',
+    'Indian': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=80&w=800',
+    'Korean': 'https://images.unsplash.com/photo-1532347231146-80afc9e3df2b?q=80&w=800',
+    'Thai': 'https://images.unsplash.com/photo-1559314809-0d155014e29e?q=80&w=800',
+    'Mexican': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?q=80&w=800',
+    'Greek': 'https://images.unsplash.com/photo-1600335895229-6e75511892c8?q=80&w=800',
+    'French': 'https://images.unsplash.com/photo-1608855238293-a8853e7f7c98?q=80&w=800',
+    'Middle Eastern': 'https://images.unsplash.com/photo-1606811971618-4486d14f3f99?q=80&w=800',
+    'Caribbean': 'https://images.unsplash.com/photo-1566906278504-3b56920844a5?q=80&w=800',
+    'Vietnamese': 'https://images.unsplash.com/photo-1557872943-16a5ac26437e?q=80&w=800',
+    'Bakery Products/Desserts': 'https://images.unsplash.com/photo-1517686469429-8bdb88b9f907?q=80&w=800',
+    'Bakery': 'https://images.unsplash.com/photo-1517686469429-8bdb88b9f907?q=80&w=800',
+    'Sandwiches': 'https://images.unsplash.com/photo-1554433607-66b5efe9d304?q=80&w=800',
+    'Pizza': 'https://images.unsplash.com/photo-1594007654729-407eedc4fe24?q=80&w=800',
+    'Seafood': 'https://images.unsplash.com/photo-1579767684611-5da6bcea8416?q=80&w=800',
+    'Vegetarian': 'https://images.unsplash.com/photo-1608032364895-84578f805572?q=80&w=800',
+    'Vegan': 'https://images.unsplash.com/photo-1532768778661-0d4888e94541?q=80&w=800',
+    'Hamburgers': 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=800',
+    'Coffee/Tea': 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=800',
+    'Café/Coffee/Tea': 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=800',
+    'Delicatessen': 'https://images.unsplash.com/photo-1546964124-0cce460f38ef?q=80&w=800',
+    'Latin': 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+    'Latin American': 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+    'Mediterranean': 'https://images.unsplash.com/photo-1594007654729-407eedc4fe24?q=80&w=800'
+  };
+  
+  // Return the image for the cuisine or a default
+  return cuisineImageMap[cuisine] || 'https://images.unsplash.com/photo-1532635241-17e820acc59f?q=80&w=800';
 }
 
 // Clear restaurant details from the modal
 function clearRestaurantDetails() {
+  // Clear title, address, and details
   document.getElementById('modalRestaurantTitle').textContent = '';
   document.getElementById('modalRestaurantAddress').textContent = '';
-  document.getElementById('modalRestaurantDetails').textContent = '';
-  document.getElementById('reviewsList').innerHTML = '';
+  document.getElementById('modalRestaurantDetails').innerHTML = '';
+  
+  // Remove any existing restaurant image
+  const existingImage = document.querySelector('.modal-image');
+  if (existingImage) {
+    existingImage.parentElement.remove();
+  }
+  
+  // Clear the map
   if (mapInstance) {
     mapInstance.remove();
     mapInstance = null;
   }
+  
+  // Clear reviews
+  document.getElementById('reviewsList').innerHTML = '';
+  
+  // Reset the review form
+  resetReviewForm();
 }
 
 // Close the details modal
@@ -902,5 +1151,26 @@ function loadMap(restaurant) {
         </div>
       </div>
     `;
+  }
+}
+
+// Function to update review form visibility based on login status
+function updateReviewFormVisibility() {
+  const reviewFormContainer = document.getElementById('reviewFormContainer');
+  
+  if (currentUser) {
+    reviewFormContainer.classList.remove('hidden');
+    
+    // Pre-fill the reviewer name if available from user profile
+    const reviewerNameInput = document.getElementById('reviewerName');
+    if (reviewerNameInput && currentUser.user_metadata && currentUser.user_metadata.name) {
+      reviewerNameInput.value = currentUser.user_metadata.name;
+    } else if (reviewerNameInput && currentUser.email) {
+      // Use email as fallback (or first part of email)
+      const emailParts = currentUser.email.split('@');
+      reviewerNameInput.value = emailParts[0];
+    }
+  } else {
+    reviewFormContainer.classList.add('hidden');
   }
 }

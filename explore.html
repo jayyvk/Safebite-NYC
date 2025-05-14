@@ -27,6 +27,20 @@
           </a>
         </div>
         <div class="flex items-center space-x-4">
+          <nav class="hidden sm:flex space-x-4 mr-6">
+            <a href="index.html" data-page="index.html"
+               class="inline-flex items-center justify-center px-4 py-2 rounded-full border border-indigo-200 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 font-medium transition nav-btn">
+              Home
+            </a>
+            <a href="explore.html" data-page="explore.html"
+               class="inline-flex items-center justify-center px-4 py-2 rounded-full border border-indigo-200 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 font-medium transition nav-btn">
+              Explore
+            </a>
+            <a href="about.html" data-page="about.html"
+               class="inline-flex items-center justify-center px-4 py-2 rounded-full border border-indigo-200 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 font-medium transition nav-btn">
+              About
+            </a>
+          </nav>                             
           <span id="userEmail" class="hidden text-sm font-medium text-gray-600"></span>
           <button id="loginButton" onclick="window.location='login.html'" class="btn-primary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium">
             <i class="fas fa-sign-in-alt mr-2"></i>Login
@@ -174,6 +188,19 @@
       </div>
     </div>
   </div>
+
+  <script>
+    // Highlight active nav link based on URL
+    const currentPage = window.location.pathname.split("/").pop();
+  
+    document.querySelectorAll("nav a").forEach(link => {
+      const href = link.getAttribute("href");
+      if (href === currentPage) {
+        link.classList.add("bg-indigo-100", "text-indigo-700", "font-semibold");
+        link.classList.remove("text-gray-700");
+      }
+    });
+  </script>  
 
   <script src="script.js"></script>
 </body>

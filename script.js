@@ -8,6 +8,44 @@ let currentUser = null;
 let mapInstance = null;
 let currentFilters = {};
 
+// Cuisine emoji mapping
+const cuisineEmojis = {
+  'American': '🍔',
+  'Chinese': '🥡',
+  'Pizza': '🍕',
+  'Italian': '🍝',
+  'Mexican': '🌮',
+  'Japanese': '🍣',
+  'Thai': '🍜',
+  'Indian': '🍛',
+  'Korean': '🍲',
+  'Greek': '🥙',
+  'French': '🥖',
+  'Mediterranean': '🫒',
+  'Middle Eastern': '🧆',
+  'Caribbean': '🌴',
+  'Vietnamese': '🍜',
+  'Donuts': '🍩',
+  'Bakery': '🥐',
+  'Café/Coffee/Tea': '☕',
+  'Coffee/Tea': '☕',
+  'Soul Food': '🍗',
+  'Delicatessen': '🥓',
+  'African': '🍲',
+  'Spanish': '🥘',
+  'Peruvian': '🌽',
+  'Hamburgers': '🍔',
+  'Jewish/Kosher': '✡️',
+  'Bakery Products/Desserts': '🍰',
+  'Sandwiches': '🥪',
+  'Vegetarian': '🥗',
+  'Vegan': '🥬',
+  'Seafood': '🦞',
+  
+  // Fallback for any other cuisine
+  'Other': '🍴'
+};
+
 // Add loading state
 function setLoading(isLoading) {
   const grid = document.getElementById('restaurantGrid');
@@ -33,7 +71,6 @@ function setLoading(isLoading) {
 
 async function fetchRestaurants(filters = {}) {
   setLoading(true);
-  currentFilters = filters;
   
   try {
     let query = supabase.from('restaurants').select('*');
@@ -126,39 +163,6 @@ function renderRestaurants(restaurants) {
     return;
   }
 
-  // Cuisine emoji mapping
-  const cuisineEmojis = {
-    'American': '🍔',
-    'Chinese': '🥡',
-    'Pizza': '🍕',
-    'Italian': '🍝',
-    'Mexican': '🌮',
-    'Japanese': '🍣',
-    'Thai': '🍜',
-    'Indian': '🍛',
-    'Korean': '🍲',
-    'Greek': '🥙',
-    'French': '🥖',
-    'Mediterranean': '🫒',
-    'Middle Eastern': '🧆',
-    'Caribbean': '🌴',
-    'Vietnamese': '🍜',
-    'Donuts': '🍩',
-    'Bakery': '🥐',
-    'Café/Coffee/Tea': '☕',
-    'Coffee/Tea': '☕',
-    'Soul Food': '🍗',
-    'Delicatessen': '🥓',
-    'African': '🍲',
-    'Spanish': '🥘',
-    'Peruvian': '🌽',
-    'Hamburgers': '🍔',
-    'Jewish/Kosher': '✡️',
-    
-    // Fallback for any other cuisine
-    'Other': '🍴'
-  };
-
   // Get grade emoji mapping
   const gradeEmojis = {
     'A': '🏆',
@@ -181,9 +185,11 @@ function renderRestaurants(restaurants) {
       <div class="p-4">
         <div class="flex justify-between items-start mb-3">
           <h3 class="text-lg font-semibold text-gray-900 line-clamp-2">${restaurant.name}</h3>
-          <span class="grade-badge ${gradeClass} ml-2 flex-shrink-0">
-            <span class="grade-emoji">${gradeEmoji}</span>${restaurant.grade || 'N/A'}
-          </span>
+          <div class="flex items-center">
+            <span class="grade-badge ${gradeClass} ml-2 flex-shrink-0">
+              <span class="grade-emoji">${gradeEmoji}</span>${restaurant.grade || 'N/A'}
+            </span>
+          </div>
         </div>
         <div class="mb-3 text-sm text-gray-600">
           <div class="flex items-start mb-2">
@@ -251,6 +257,9 @@ async function handleViewDetails(restaurantId) {
   resetReviewForm();
   clearRestaurantDetails();
   
+  // Reset owner dashboard view if it exists
+  returnToCustomerView();
+  
   try {
     // Fetch restaurant details
     const { data: restaurant, error } = await supabase
@@ -291,7 +300,13 @@ async function loadRestaurantDetails(restaurant) {
   const details = document.getElementById('modalRestaurantDetails');
   const restaurantIdInput = document.getElementById('modalRestaurantId');
   
-  title.textContent = restaurant.name;
+  title.innerHTML = `
+    ${restaurant.name}
+    <span class="owner-link text-sm ml-2" onclick="promptOwnerPassword(${restaurant.id})">
+      Owner? Click here
+    </span>
+  `;
+  
   address.innerHTML = `<i class="fas fa-map-marker-alt text-gray-400 mr-2"></i>${restaurant.address || 'No address available'}`;
   
   // Format details with icons
@@ -301,6 +316,7 @@ async function loadRestaurantDetails(restaurant) {
   
   // Use cuisine with fallback options
   const cuisine = restaurant.cuisine || restaurant.cuisine_type || 'Other';
+  const cuisineEmoji = cuisineEmojis[cuisine] || '🍴';
   
   details.innerHTML = `
     <div class="flex flex-wrap gap-2 mt-3">
@@ -351,6 +367,19 @@ function closeDetailsModal() {
   modal.classList.add('hidden');
   document.body.style.overflow = '';
   clearRestaurantDetails();
+  
+  // Reset owner dashboard view
+  const ownerReportSection = document.getElementById('ownerReportSection');
+  if (ownerReportSection) {
+    ownerReportSection.remove();
+  }
+  
+  // Make sure reviews section is visible for next time
+  const reviewsSection = document.querySelector('#detailsModal .border-t');
+  if (reviewsSection) {
+    reviewsSection.classList.remove('hidden');
+  }
+  
   if (mapInstance) {
     mapInstance.remove();
     mapInstance = null;
@@ -429,23 +458,6 @@ supabase.auth.onAuthStateChange((event, session) => {
     document.getElementById('logoutButton')?.classList.add('hidden');
   } else if (event === 'SIGNED_IN') {
     loadUser();
-  }
-});
-
-// Event Listeners
-document.getElementById('applyFilters')?.addEventListener('click', () => {
-  const filters = {
-    grade: document.getElementById('gradeFilter').value,
-    borough: document.getElementById('boroughFilter').value,
-    cuisine: document.getElementById('cuisineFilter').value,
-    search: document.getElementById('searchInput').value.trim()
-  };
-  fetchRestaurants(filters);
-});
-
-document.getElementById('searchInput')?.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    document.getElementById('applyFilters').click();
   }
 });
 
@@ -838,6 +850,30 @@ window.addEventListener('DOMContentLoaded', () => {
   fetchRestaurants();
   loadUser();
   
+  // Filter handling
+  const applyFiltersBtn = document.getElementById('applyFilters');
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener('click', () => {
+      const filters = {
+        grade: document.getElementById('gradeFilter').value,
+        borough: document.getElementById('boroughFilter').value,
+        cuisine: document.getElementById('cuisineFilter').value,
+        search: document.getElementById('searchInput').value.trim()
+      };
+      fetchRestaurants(filters);
+    });
+  }
+  
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const applyBtn = document.getElementById('applyFilters');
+        if (applyBtn) applyBtn.click();
+      }
+    });
+  }
+  
   // Review-related event listeners
   const reviewForm = document.getElementById('reviewForm');
   if (reviewForm) {
@@ -862,16 +898,22 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+  
+  // Initialize favorite icons when viewing details
+  window.handleViewDetails = handleViewDetails;
+  window.closeDetailsModal = closeDetailsModal;
+  window.clearFilters = clearFilters;
+  window.updateStars = updateStars;
+  window.handleReviewSubmit = handleReviewSubmit;
+  window.cancelEdit = cancelEdit;
+  window.logout = logout;
+  window.editReview = editReview;
+  window.deleteReview = deleteReview;
+  window.promptOwnerPassword = promptOwnerPassword;
+  window.returnToCustomerView = returnToCustomerView;
+  window.updateRestaurantInfo = updateRestaurantInfo;
+  window.downloadReportCSV = downloadReportCSV;
 });
-
-// Make functions globally accessible
-window.handleViewDetails = handleViewDetails;
-window.closeDetailsModal = closeDetailsModal;
-window.clearFilters = clearFilters;
-window.editReview = editReview;
-window.deleteReview = deleteReview;
-window.loadReviews = loadReviews;
-window.resetReviewForm = resetReviewForm;
 
 // Format the date nicely
 function formatDate(dateStr) {
@@ -927,5 +969,451 @@ function loadMap(restaurant) {
         </div>
       </div>
     `;
+  }
+}
+
+// Owner report functionality
+function promptOwnerPassword(restaurantId) {
+  const password = prompt('Please enter the owner password:');
+  
+  if (password === 'admin') {
+    // Hide reviews section
+    document.querySelector('#detailsModal .border-t').classList.add('hidden');
+    
+    // Load owner details in the same modal
+    loadOwnerReport(restaurantId);
+  } else {
+    alert('Incorrect password');
+  }
+}
+
+async function loadOwnerReport(restaurantId) {
+  try {
+    // Get restaurant ID from the hidden input
+    if (!restaurantId) {
+      restaurantId = parseInt(document.getElementById('modalRestaurantId').value, 10);
+    }
+    
+    // First, remove any existing owner report sections to prevent duplicates
+    const existingReportSection = document.getElementById('ownerReportSection');
+    if (existingReportSection) {
+      existingReportSection.remove();
+    }
+    
+    // Set loading state for the modal
+    const detailsContainer = document.getElementById('detailsModal').querySelector('.p-6');
+    
+    // Create owner report section
+    const ownerReportSection = document.createElement('div');
+    ownerReportSection.id = 'ownerReportSection';
+    ownerReportSection.className = 'border-t border-gray-200 pt-6';
+    ownerReportSection.innerHTML = `
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-lg font-semibold text-gray-900">
+          <i class="fas fa-chart-bar mr-2 text-blue-500"></i>Owner Dashboard
+        </h3>
+        <button onclick="returnToCustomerView()" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+          <i class="fas fa-arrow-left mr-1"></i>Back to customer view
+        </button>
+      </div>
+      <div class="flex justify-center items-center py-8">
+        <i class="fas fa-spinner fa-spin text-indigo-500 text-3xl"></i>
+      </div>
+    `;
+    
+    // Add the owner report section
+    detailsContainer.appendChild(ownerReportSection);
+    
+    // Fetch restaurant details if not already fetched
+    let restaurant;
+    if (restaurantId) {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', parseInt(restaurantId, 10))
+        .single();
+        
+      if (error) throw error;
+      restaurant = data;
+    }
+    
+    // Fetch review count
+    const { count: reviewCount, error: reviewError } = await supabase
+      .from('reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('restaurant_id', parseInt(restaurantId, 10));
+      
+    if (reviewError) throw reviewError;
+    
+    // Get average rating
+    const { data: ratingData, error: ratingError } = await supabase
+      .from('reviews')
+      .select('rating')
+      .eq('restaurant_id', parseInt(restaurantId, 10));
+      
+    if (ratingError) throw ratingError;
+    
+    let averageRating = 0;
+    if (ratingData && ratingData.length > 0) {
+      const sum = ratingData.reduce((acc, review) => acc + review.rating, 0);
+      averageRating = (sum / ratingData.length).toFixed(1);
+    }
+    
+    // Get the most recent review date
+    const { data: latestReview, error: latestError } = await supabase
+      .from('reviews')
+      .select('created_at')
+      .eq('restaurant_id', parseInt(restaurantId, 10))
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    const lastReviewDate = latestReview && latestReview.length > 0 
+      ? formatDate(latestReview[0].created_at)
+      : 'N/A';
+    
+    // Get recent reviews
+    const { data: recentReviews, error: recentError } = await supabase
+      .from('reviews')
+      .select('rating, comment, created_at')
+      .eq('restaurant_id', parseInt(restaurantId, 10))
+      .order('created_at', { ascending: false })
+      .limit(5);
+      
+    if (recentError) throw recentError;
+    
+    // Build recent reviews HTML
+    let recentReviewsHtml = '';
+    if (recentReviews && recentReviews.length > 0) {
+      recentReviewsHtml = `
+        <h4 class="font-medium text-gray-700 mb-3">Recent Reviews</h4>
+        <div class="space-y-4 recent-reviews-container">
+          ${recentReviews.map(review => `
+            <div class="border rounded-md p-4 bg-gray-50">
+              <div class="flex justify-between mb-2">
+                <div class="text-sm text-gray-500">${formatDate(review.created_at)}</div>
+                <div class="text-yellow-500">
+                  ${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}
+                </div>
+              </div>
+              <p class="text-gray-700">${review.comment}</p>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      recentReviewsHtml = `
+        <div class="text-center py-6 text-gray-500 bg-gray-50 rounded-md">
+          <p>No reviews available</p>
+        </div>
+      `;
+    }
+    
+    // Get cuisine options for dropdown
+    const cuisineOptions = [
+      'American', 'Chinese', 'Italian', 'Japanese', 'Indian', 'Korean', 
+      'Thai', 'Mexican', 'Greek', 'French', 'Middle Eastern', 'Caribbean', 
+      'Vietnamese', 'Bakery Products/Desserts', 'Sandwiches', 'Pizza', 
+      'Seafood', 'Vegetarian', 'Vegan'
+    ].map(cuisine => {
+      const selected = (restaurant.cuisine === cuisine || restaurant.cuisine_type === cuisine) 
+        ? 'selected' 
+        : '';
+      return `<option value="${cuisine}" ${selected}>${cuisine}</option>`;
+    }).join('');
+    
+    // Update the owner report section with restaurant details
+    ownerReportSection.innerHTML = `
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-semibold text-gray-900">
+          <i class="fas fa-chart-bar mr-2 text-blue-500"></i>Owner Dashboard
+        </h3>
+        <button onclick="returnToCustomerView()" class="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+          <i class="fas fa-arrow-left mr-1"></i>Back to customer view
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div class="bg-white rounded-lg border p-5 mb-6">
+            <h4 class="font-medium text-gray-700 mb-4">Restaurant Stats</h4>
+            
+            <div class="grid grid-cols-1 gap-4 mb-4">
+              <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Total Reviews</span>
+                <span class="text-lg font-medium">${reviewCount}</span>
+              </div>
+              
+              <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Average Rating</span>
+                <span class="text-lg font-medium text-yellow-500">${averageRating} / 5</span>
+              </div>
+              
+              <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-600">Latest Review</span>
+                <span class="text-sm">${lastReviewDate}</span>
+              </div>
+              
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Current Grade</span>
+                <span class="grade-badge ${getGradeColorClass(restaurant.grade)}">${restaurant.grade || 'N/A'}</span>
+              </div>
+            </div>
+            
+            <div class="border-t pt-4 mt-2">
+              <div class="p-4 rounded-md ${getGradeColorClass(restaurant.grade)}">
+                <p class="text-sm">${getGradeMessage(restaurant.grade)}</p>
+              </div>
+            </div>
+          </div>
+          
+          ${recentReviewsHtml}
+        </div>
+        
+        <div>
+          <div class="bg-white rounded-lg border p-5 mb-6">
+            <h4 class="font-medium text-gray-700 mb-4">Update Restaurant Info</h4>
+            
+            <div class="mb-4">
+              <label for="restaurantAddress" class="block font-medium text-gray-700 mb-2">Address</label>
+              <input type="text" id="restaurantAddress" class="w-full px-3 py-2 border rounded-md" 
+                    value="${restaurant.address || ''}" />
+            </div>
+            
+            <div class="mb-4">
+              <label for="restaurantCuisine" class="block font-medium text-gray-700 mb-2">Cuisine</label>
+              <select id="restaurantCuisine" class="w-full px-3 py-2 border rounded-md">
+                ${cuisineOptions}
+              </select>
+            </div>
+            
+            <button onclick="updateRestaurantInfo(${restaurant.id})" class="btn-primary w-full py-2 mt-4">
+              <i class="fas fa-save mr-2"></i>Save Changes
+            </button>
+          </div>
+          
+          <div class="bg-white rounded-lg border p-5">
+            <h4 class="font-medium text-gray-700 mb-4">Report</h4>
+            <p class="text-sm text-gray-600 mb-4">
+              Download a comprehensive report with all restaurant statistics and reviews in CSV format.
+            </p>
+            <button onclick="downloadReportCSV(${restaurant.id})" class="btn-secondary w-full py-2">
+              <i class="fas fa-download mr-2"></i>Download Report (CSV)
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+  } catch (err) {
+    console.error('Error loading owner report:', err);
+    showNotification('Error loading owner report', 'error');
+  }
+}
+
+function returnToCustomerView() {
+  // Remove owner report section
+  const ownerReportSection = document.getElementById('ownerReportSection');
+  if (ownerReportSection) {
+    ownerReportSection.remove();
+  }
+  
+  // Show reviews section again
+  const reviewsSection = document.querySelector('#detailsModal .border-t');
+  if (reviewsSection) {
+    reviewsSection.classList.remove('hidden');
+  }
+}
+
+function getGradeMessage(grade) {
+  switch (grade) {
+    case 'A':
+      return "Great job! Your restaurant is maintaining excellent health standards.";
+    case 'B':
+      return "Focus on improving cleanliness and food handling procedures to achieve an A grade.";
+    case 'C':
+      return "Review kitchen hygiene practices immediately. Schedule a follow-up inspection.";
+    default:
+      return "No grade information available. Please schedule an inspection.";
+  }
+}
+
+function getGradeColorClass(grade) {
+  switch (grade) {
+    case 'A':
+      return "bg-green-50 text-green-800";
+    case 'B':
+      return "bg-yellow-50 text-yellow-800";
+    case 'C':
+      return "bg-red-50 text-red-800";
+    default:
+      return "bg-gray-50 text-gray-800";
+  }
+}
+
+async function updateRestaurantInfo(restaurantId) {
+  const newAddress = document.getElementById('restaurantAddress').value.trim();
+  const newCuisine = document.getElementById('restaurantCuisine').value;
+  
+  if (!newAddress) {
+    showNotification('Address cannot be empty', 'error');
+    return;
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('restaurants')
+      .update({ 
+        address: newAddress,
+        cuisine: newCuisine 
+      })
+      .eq('id', restaurantId);
+      
+    if (error) {
+      throw error;
+    }
+    
+    showNotification('Restaurant information updated successfully', 'success');
+    
+    // Update the information in the DOM if the restaurant card is visible
+    document.querySelectorAll(`.card`).forEach(card => {
+      if (card.innerHTML.includes(`handleViewDetails(${restaurantId})`)) {
+        const addressSpan = card.querySelector('.fa-map-marker-alt').parentNode.nextElementSibling;
+        addressSpan.textContent = newAddress;
+        
+        const cuisineSpan = card.querySelector('.fa-utensils').parentNode.nextElementSibling;
+        const cuisineEmoji = cuisineEmojis[newCuisine] || '🍴';
+        cuisineSpan.innerHTML = `${cuisineEmoji} ${newCuisine}`;
+      }
+    });
+    
+  } catch (err) {
+    console.error('Error updating restaurant information:', err);
+    showNotification('Error updating restaurant information', 'error');
+  }
+}
+
+async function downloadReportCSV(restaurantId) {
+  try {
+    // Fetch restaurant details
+    const { data: restaurant, error } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('id', parseInt(restaurantId, 10))
+      .single();
+      
+    if (error) throw error;
+    
+    // Fetch review count
+    const { count: reviewCount, error: reviewError } = await supabase
+      .from('reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('restaurant_id', parseInt(restaurantId, 10));
+      
+    if (reviewError) throw reviewError;
+    
+    // Get average rating
+    const { data: ratingData, error: ratingError } = await supabase
+      .from('reviews')
+      .select('rating')
+      .eq('restaurant_id', parseInt(restaurantId, 10));
+      
+    if (ratingError) throw ratingError;
+    
+    let averageRating = 0;
+    if (ratingData && ratingData.length > 0) {
+      const sum = ratingData.reduce((acc, review) => acc + review.rating, 0);
+      averageRating = (sum / ratingData.length).toFixed(1);
+    }
+    
+    // Get the most recent review date
+    const { data: latestReview, error: latestError } = await supabase
+      .from('reviews')
+      .select('created_at')
+      .eq('restaurant_id', parseInt(restaurantId, 10))
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    const lastReviewDate = latestReview && latestReview.length > 0 
+      ? formatDate(latestReview[0].created_at)
+      : 'N/A';
+    
+    // Get improvement insights based on grade
+    const improvementInsights = getGradeMessage(restaurant.grade);
+    
+    // Get recent reviews for the second part of the report
+    const { data: recentReviews, error: recentError } = await supabase
+      .from('reviews')
+      .select('rating, comment, created_at')
+      .eq('restaurant_id', parseInt(restaurantId, 10))
+      .order('created_at', { ascending: false })
+      .limit(5);
+      
+    if (recentError) throw recentError;
+    
+    // Get phone number from restaurant data with fallback
+    const phoneNumber = restaurant.phone || '(N/A)';
+    
+    // Format current date for report generation date
+    const currentDate = formatDate(new Date());
+    
+    // Format inspection date
+    const inspectionDate = formatDate(restaurant.inspection_date) || 'N/A';
+    
+    // Format address with fallback
+    const address = restaurant.address || 'N/A';
+    
+    // Create CSV content
+    let csvContent = [
+      ['Restaurant Name', restaurant.name],
+      ['Report Generated', currentDate],
+      ['Current Grade', restaurant.grade || 'N/A'],
+      ['Inspection Date', inspectionDate],
+      ['Total Reviews', reviewCount],
+      ['Average Rating', averageRating],
+      ['Last Review Date', lastReviewDate],
+      ['Address', address],
+      ['Phone', phoneNumber],
+      ['Improvement Insights', `"${improvementInsights}"`],
+      [''],
+      ['Recent Reviews'],
+      ['Date', 'Rating', 'Comment']
+    ];
+    
+    // Add recent reviews to the CSV content
+    if (recentReviews && recentReviews.length > 0) {
+      recentReviews.forEach(review => {
+        csvContent.push([
+          formatDate(review.created_at),
+          review.rating,
+          `"${review.comment.replace(/"/g, '""')}"`
+        ]);
+      });
+    } else {
+      csvContent.push(['N/A', 'N/A', 'No reviews available']);
+    }
+    
+    // Convert arrays to CSV format
+    const formattedCSV = csvContent.map(row => row.join(',')).join('\n');
+    
+    // Create downloadable file
+    const blob = new Blob([formattedCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Set link properties
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${restaurant.name.replace(/\s+/g, '_')}_Report_${currentDate.replace(/\//g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    
+    // Add to DOM, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('Report downloaded successfully', 'success');
+    
+  } catch (err) {
+    console.error('Error downloading report:', err);
+    showNotification('Error generating report', 'error');
   }
 }

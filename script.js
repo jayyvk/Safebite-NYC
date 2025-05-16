@@ -402,6 +402,11 @@ async function logout() {
       return;
     }
     
+    // Track logout event if Vercel Analytics is available
+    if (window.trackEvent) {
+      window.trackEvent('user_logout', { status: 'success' });
+    }
+    
     // Clear any local state
     currentUser = null;
     
@@ -645,7 +650,10 @@ async function handleReviewSubmit(e) {
     console.log('Submitting review for restaurant:', restaurantId, reviewData);
 
     let result;
+    let actionType = 'create';
+    
     if (reviewId) {
+      actionType = 'update';
       // Verify permission to edit if we have a reviewId
       if (reviewId) {
         const { data: existingReview, error: fetchError } = await supabase
@@ -686,6 +694,15 @@ async function handleReviewSubmit(e) {
       console.error('Error saving review:', result.error);
       showNotification(`Error submitting review: ${result.error.message}`, 'error');
       return;
+    }
+
+    // Track review submission if Vercel Analytics is available
+    if (window.trackEvent) {
+      window.trackEvent('review_submitted', { 
+        action: actionType,
+        restaurant_id: restaurantId,
+        rating: rating
+      });
     }
 
     showNotification('Review submitted successfully!', 'success');
@@ -977,6 +994,11 @@ function promptOwnerPassword(restaurantId) {
   const password = prompt('Please enter the owner password:');
   
   if (password === 'admin') {
+    // Track owner login if Vercel Analytics is available
+    if (window.trackEvent) {
+      window.trackEvent('owner_dashboard_view', { restaurant_id: restaurantId });
+    }
+    
     // Hide reviews section
     document.querySelector('#detailsModal .border-t').classList.add('hidden');
     
@@ -1272,6 +1294,14 @@ async function updateRestaurantInfo(restaurantId) {
       throw error;
     }
     
+    // Track restaurant update if Vercel Analytics is available
+    if (window.trackEvent) {
+      window.trackEvent('restaurant_updated', { 
+        restaurant_id: restaurantId,
+        cuisine: newCuisine
+      });
+    }
+    
     showNotification('Restaurant information updated successfully', 'success');
     
     // Update the information in the DOM if the restaurant card is visible
@@ -1411,6 +1441,14 @@ async function downloadReportCSV(restaurantId) {
     document.body.removeChild(link);
     
     showNotification('Report downloaded successfully', 'success');
+    
+    // Track report download if Vercel Analytics is available
+    if (window.trackEvent) {
+      window.trackEvent('report_downloaded', { 
+        restaurant_id: restaurantId,
+        restaurant_name: restaurant.name
+      });
+    }
     
   } catch (err) {
     console.error('Error downloading report:', err);

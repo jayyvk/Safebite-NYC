@@ -66,6 +66,9 @@ function setLoading(isLoading) {
         </div>
       `).join('')}
     `;
+    grid.classList.add('loading');
+  } else {
+    grid.classList.remove('loading');
   }
 }
 
@@ -862,6 +865,162 @@ function cancelEdit() {
   resetReviewForm();
 }
 
+// Function to download filtered restaurants as CSV
+async function downloadFilteredResultsCSV() {
+  try {
+    // Get the currently displayed restaurants from the grid
+    const restaurantGrid = document.getElementById('restaurantGrid');
+    const restaurantCards = restaurantGrid.querySelectorAll('.card');
+    
+    // If there are no restaurants, show a notification and return
+    if (restaurantCards.length === 0) {
+      showNotification('No restaurants to export. Try removing filters or performing a search first.', 'error');
+      return;
+    }
+    
+    // Show a loading notification
+    const loadingNotification = showNotification('Preparing CSV export...', 'success', 0);
+    
+    // Create CSV header
+    let csvContent = [
+      ['Restaurant Name', 'Address', 'Phone Number', 'Cuisine', 'Grade']
+    ];
+    
+    // Collect restaurant IDs from the cards
+    const restaurantIds = [];
+    restaurantCards.forEach(card => {
+      try {
+        // Extract restaurant ID from the View Details button
+        const viewDetailsBtn = card.querySelector('button');
+        const onClickAttr = viewDetailsBtn ? viewDetailsBtn.getAttribute('onclick') : '';
+        const restaurantIdMatch = onClickAttr ? onClickAttr.match(/handleViewDetails\((\d+)\)/) : null;
+        const restaurantId = restaurantIdMatch ? parseInt(restaurantIdMatch[1], 10) : null;
+        
+        if (restaurantId) {
+          restaurantIds.push(restaurantId);
+        }
+      } catch (err) {
+        console.error('Error extracting restaurant ID:', err);
+      }
+    });
+    
+    // Fetch all restaurant data from Supabase
+    const { data: restaurants, error } = await supabase
+      .from('restaurants')
+      .select('*')
+      .in('id', restaurantIds);
+      
+    if (error) {
+      console.error('Error fetching restaurant details:', error);
+      // Continue with basic info from the cards if fetch fails
+    }
+    
+    // Create a map of restaurant data for quick lookup
+    const restaurantMap = {};
+    if (restaurants && restaurants.length > 0) {
+      restaurants.forEach(restaurant => {
+        restaurantMap[restaurant.id] = restaurant;
+      });
+    }
+    
+    // Process each restaurant card
+    restaurantCards.forEach(card => {
+      try {
+        // Extract basic info from the card
+        const name = card.querySelector('h3').innerText.trim();
+        
+        // Get restaurant ID
+        const viewDetailsBtn = card.querySelector('button');
+        const onClickAttr = viewDetailsBtn ? viewDetailsBtn.getAttribute('onclick') : '';
+        const restaurantIdMatch = onClickAttr ? onClickAttr.match(/handleViewDetails\((\d+)\)/) : null;
+        const restaurantId = restaurantIdMatch ? parseInt(restaurantIdMatch[1], 10) : null;
+        
+        // Try to get detailed info from the database
+        let address = 'N/A';
+        let phone = 'N/A';
+        let cuisine = 'N/A';
+        let grade = 'N/A';
+        
+        // Get data from map if available
+        if (restaurantId && restaurantMap[restaurantId]) {
+          const restaurant = restaurantMap[restaurantId];
+          address = restaurant.address || 'N/A';
+          phone = restaurant.phone || 'N/A';
+          cuisine = restaurant.cuisine || restaurant.cuisine_type || 'N/A';
+          grade = restaurant.grade || 'N/A';
+        } else {
+          // Fallback to card data
+          // Get address (second sibling of map marker icon)
+          const addressElement = card.querySelector('.fa-map-marker-alt').parentNode.nextElementSibling;
+          address = addressElement ? addressElement.innerText.trim() : 'N/A';
+          
+          // Get cuisine (second sibling of utensils icon)
+          const cuisineElement = card.querySelector('.fa-utensils').parentNode.nextElementSibling;
+          if (cuisineElement) {
+            // Remove emoji from cuisine if present (typically first 2 characters)
+            cuisine = cuisineElement.innerText.trim();
+            if (cuisine.indexOf(' ') > 0) {
+              cuisine = cuisine.substring(cuisine.indexOf(' ') + 1); // Remove emoji and space
+            }
+          }
+          
+          // Get grade badge
+          const gradeBadge = card.querySelector('.grade-badge');
+          grade = gradeBadge ? gradeBadge.innerText.trim().replace(/[🏆👍⚠️❓⏳]/g, '').trim() : 'N/A';
+        }
+        
+        // Add this restaurant to the CSV data
+        csvContent.push([name, address, phone, cuisine, grade]);
+      } catch (err) {
+        console.error('Error processing restaurant card:', err);
+        // Continue with next card
+      }
+    });
+    
+    // Remove the loading notification
+    if (loadingNotification) {
+      loadingNotification.remove();
+    }
+    
+    // Convert arrays to CSV string
+    const csvString = csvContent.map(row => row.map(cell => {
+      // Handle cells with commas, quotes, etc.
+      const cellValue = String(cell).replace(/"/g, '""');
+      return `"${cellValue}"`;
+    }).join(',')).join('\n');
+    
+    // Create a download link
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Set up the link
+    const date = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SafeBite_NYC_Restaurants_${date}.csv`);
+    link.style.visibility = 'hidden';
+    
+    // Append to document, trigger the download, and cleanup
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Track download if analytics is available
+    if (window.trackEvent) {
+      window.trackEvent('filtered_results_download', { 
+        count: restaurantCards.length,
+        filters: JSON.stringify(currentFilters || {})
+      });
+    }
+    
+    // Show a success notification
+    showNotification(`${restaurantCards.length} restaurants exported successfully`, 'success');
+  } catch (err) {
+    console.error('Error creating CSV export:', err);
+    showNotification('Error creating CSV export', 'error');
+  }
+}
+
 // Initialize
 window.addEventListener('DOMContentLoaded', () => {
   fetchRestaurants();
@@ -877,6 +1036,7 @@ window.addEventListener('DOMContentLoaded', () => {
         cuisine: document.getElementById('cuisineFilter').value,
         search: document.getElementById('searchInput').value.trim()
       };
+      currentFilters = filters; // Store current filters for CSV export
       fetchRestaurants(filters);
     });
   }
@@ -888,6 +1048,15 @@ window.addEventListener('DOMContentLoaded', () => {
         const applyBtn = document.getElementById('applyFilters');
         if (applyBtn) applyBtn.click();
       }
+    });
+  }
+  
+  // CSV download button
+  const downloadBtn = document.getElementById('downloadResultsCSV');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      downloadFilteredResultsCSV();
     });
   }
   
@@ -930,6 +1099,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.returnToCustomerView = returnToCustomerView;
   window.updateRestaurantInfo = updateRestaurantInfo;
   window.downloadReportCSV = downloadReportCSV;
+  window.downloadFilteredResultsCSV = downloadFilteredResultsCSV;
 });
 
 // Format the date nicely

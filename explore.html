@@ -57,24 +57,27 @@
 
   <!-- Search and Filters -->
   <div class="filter-container bg-white shadow-sm sticky top-16 z-40 border-b border-gray-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:space-x-4">
-        <div class="flex-1 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <!-- Search Box -->
+      <div class="md:flex md:items-center md:justify-between">
+        <div class="flex-1 relative mb-4 md:mb-0 md:mr-6">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <i class="fas fa-search text-gray-400"></i>
           </div>
           <input id="searchInput" type="text" placeholder="Search restaurants by name or ZIP" 
-                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors" />
+                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors" />
         </div>
-        <div class="flex flex-wrap gap-2">
-          <select id="gradeFilter" class="block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors">
+      
+        <!-- Filter Dropdowns -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <select id="gradeFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors">
             <option value="">All Grades</option>
             <option value="A">🏆 Grade A</option>
             <option value="B">👍 Grade B</option>
             <option value="C">⚠️ Grade C</option>
             <option value="N/A">❓ Grade N/A</option>
           </select>
-          <select id="boroughFilter" class="block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors">
+          <select id="boroughFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors">
             <option value="">All Boroughs</option>
             <option value="Manhattan">🗽 Manhattan</option>
             <option value="Brooklyn">🌉 Brooklyn</option>
@@ -82,7 +85,7 @@
             <option value="Bronx">🏙️ Bronx</option>
             <option value="Staten Island">🏝️ Staten Island</option>
           </select>
-          <select id="cuisineFilter" class="block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors">
+          <select id="cuisineFilter" class="block w-full px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors">
             <option value="">All Cuisines</option>
             <option value="American">🍔 American</option>
             <option value="Chinese">🥡 Chinese</option>
@@ -104,10 +107,16 @@
             <option value="Vegetarian">🥗 Vegetarian</option>
             <option value="Vegan">🥬 Vegan</option>
           </select>
-          <button id="applyFilters" class="btn-primary inline-flex items-center px-4 py-2 rounded-md text-sm font-medium">
+          <button id="applyFilters" class="btn-primary inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium w-full">
             <i class="fas fa-filter mr-2"></i>Apply Filters
           </button>
         </div>
+      </div>
+      <!-- CSV Download Link -->
+      <div class="flex justify-end mt-4">
+        <a href="#" id="downloadResultsCSV" class="text-indigo-600 hover:text-indigo-800 flex items-center text-sm font-medium bg-indigo-50 px-3 py-2 rounded-md hover:bg-indigo-100 transition-colors duration-200">
+          <i class="fas fa-file-csv mr-2"></i>Download filtered results as CSV
+        </a>
       </div>
     </div>
   </div>
